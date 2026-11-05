@@ -1,0 +1,55 @@
+name: Jira validation
+description: Validate CNV Jira tickets referenced in the PR title
+inputs:
+  pr-number:
+    description: Pull request number
+    required: true
+  pr-title:
+    description: Pull request title
+    required: true
+  base-branch:
+    description: Base branch of the PR
+    required: true
+  head-sha:
+    description: Head commit SHA (optional; reserved for commit status)
+    required: false
+    default: ''
+  repo-owner:
+    description: Repository owner
+    required: false
+    default: ${{ github.repository_owner }}
+  repo-name:
+    description: Repository name
+    required: false
+    default: ${{ github.event.repository.name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: ${{ github.action_path }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci
+
+    - name: Run Jira validation
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        BOT_TOKEN: ${{ env.BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        JIRA_TOKEN: ${{ env.JIRA_TOKEN }}
+        STATUS_GITHUB_TOKEN: ${{ env.STATUS_GITHUB_TOKEN }}
+        REPO_OWNER: ${{ inputs.repo-owner }}
+        REPO_NAME: ${{ inputs.repo-name }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+        PR_HEAD_SHA: ${{ inputs.head-sha }}
+      run: npx tsx src/run-jira-validation.ts
