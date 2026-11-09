@@ -1,0 +1,43 @@
+# @ai-rules:
+# 1. pull_request_target: org secrets (JIRA_TOKEN, BOT_TOKEN) work for fork PRs.
+# 2. Checkout base ref only -- validation uses PR metadata, not PR branch code.
+
+name: Jira validation
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - ready_for_review
+      - reopened
+
+jobs:
+  jira:
+    name: Jira validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout base ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Validate PR title against Jira
+        uses: ./
+        with:
+          base-branch: ${{ github.event.pull_request.base.ref }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          pr-number: ${{ github.event.pull_request.number }}
+          pr-title: ${{ github.event.pull_request.title }}
+          repo-name: ${{ github.event.pull_request.base.repo.name }}
+          repo-owner: ${{ github.event.pull_request.base.repo.owner.login }}
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          STATUS_GITHUB_TOKEN: ${{ github.token }}
