@@ -10,8 +10,7 @@ on:
         required: true
 
 permissions:
-  contents: write
-  workflows: write
+  contents: read
 
 jobs:
   update-floating-tags:
@@ -33,27 +32,48 @@ jobs:
           echo "tag_name=${TAG_NAME}" >> "${GITHUB_OUTPUT}"
           echo "major_tag=${major_tag}" >> "${GITHUB_OUTPUT}"
 
+      - name: Require BOT_TOKEN
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT_TOKEN}" ]; then
+            echo "::error::BOT_TOKEN is missing. Add it under Settings → Secrets and variables → Actions (repo or org)."
+            exit 1
+          fi
+
       - name: Checkout release commit
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.meta.outputs.tag_name }}
           fetch-depth: 1
 
-      - name: Push floating tags
+      - name: Update floating tags
         env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           MAJOR_TAG: ${{ steps.meta.outputs.major_tag }}
           TAG_NAME: ${{ steps.meta.outputs.tag_name }}
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
+          repo="${GITHUB_REPOSITORY}"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          point_tag_at_sha() {
+            local tag="$1"
+            local ref_name="tags/${tag}"
+            if gh api -H "Accept: application/vnd.github+json" \
+              "repos/${repo}/git/ref/${ref_name}" >/dev/null 2>&1; then
+              gh api --method PATCH -H "Accept: application/vnd.github+json" \
+                "repos/${repo}/git/refs/${ref_name}" \
+                -f sha="${sha}" -F force=true
+            else
+              gh api --method POST -H "Accept: application/vnd.github+json" \
+                "repos/${repo}/git/refs" \
+                -f ref="refs/tags/${tag}" -f sha="${sha}"
+            fi
+          }
 
-          git tag -f "${MAJOR_TAG}" "${sha}"
-          git push origin "refs/tags/${MAJOR_TAG}" --force
-
-          git tag -f latest "${sha}"
-          git push origin refs/tags/latest --force
+          point_tag_at_sha "${MAJOR_TAG}"
+          point_tag_at_sha latest
 
           echo "Updated ${MAJOR_TAG} and latest -> ${sha} (${TAG_NAME})"
