@@ -49,10 +49,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git tag -fa "${MAJOR_TAG}" "${sha}"
+          git tag -f "${MAJOR_TAG}" "${sha}"
           git push origin "refs/tags/${MAJOR_TAG}" --force
 
-          git tag -fa latest "${sha}"
+          git tag -f latest "${sha}"
           git push origin refs/tags/latest --force
 
           echo "Updated ${MAJOR_TAG} and latest -> ${sha} (${TAG_NAME})"
