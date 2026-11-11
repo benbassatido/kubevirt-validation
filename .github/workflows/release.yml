@@ -32,13 +32,21 @@ jobs:
           echo "tag_name=${TAG_NAME}" >> "${GITHUB_OUTPUT}"
           echo "major_tag=${major_tag}" >> "${GITHUB_OUTPUT}"
 
-      - name: Require BOT_TOKEN
+      - name: Generate bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Require bot token
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          BOT_TOKEN: ${{ steps.bot-token.outputs.token }}
         run: |
           set -euo pipefail
           if [ -z "${BOT_TOKEN}" ]; then
-            echo "::error::BOT_TOKEN is missing. Add it under Settings → Secrets and variables → Actions (repo or org)."
+            echo "::error::Failed to mint kubevirt-plugin-bot installation token. Check org secrets BOT_APP_ID and BOT_APP_PRIVATE_KEY and that the App is installed on this repository with Contents write."
             exit 1
           fi
 
@@ -50,7 +58,7 @@ jobs:
 
       - name: Update floating tags
         env:
-          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           MAJOR_TAG: ${{ steps.meta.outputs.major_tag }}
           TAG_NAME: ${{ steps.meta.outputs.tag_name }}
         run: |
