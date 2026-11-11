@@ -1,7 +1,3 @@
-# @ai-rules:
-# 1. pull_request_target: org secrets (JIRA_TOKEN, BOT_TOKEN) work for fork PRs.
-# 2. Checkout base ref only -- validation uses PR metadata, not PR branch code.
-
 name: Jira validation
 
 on:
@@ -27,6 +23,26 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
 
+      - name: Generate bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          permission-contents: read
+          permission-pull-requests: write
+          permission-issues: write
+
+      - name: Require bot token
+        env:
+          BOT_TOKEN: ${{ steps.bot-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT_TOKEN}" ]; then
+            echo "::error::Failed to mint kubevirt-plugin-bot installation token. Check org secrets BOT_APP_ID and BOT_APP_PRIVATE_KEY and that the App is installed on this repository with Issues + Pull requests write."
+            exit 1
+          fi
+
       - name: Validate PR title against Jira
         uses: ./
         with:
@@ -37,7 +53,7 @@ jobs:
           repo-name: ${{ github.event.pull_request.base.repo.name }}
           repo-owner: ${{ github.event.pull_request.base.repo.owner.login }}
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          BOT_TOKEN: ${{ steps.bot-token.outputs.token }}
           GITHUB_TOKEN: ${{ github.token }}
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
           STATUS_GITHUB_TOKEN: ${{ github.token }}
