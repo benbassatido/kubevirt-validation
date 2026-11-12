@@ -10,7 +10,7 @@ on:
         required: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   update-floating-tags:
@@ -59,6 +59,7 @@ jobs:
       - name: Update floating tags
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.bot-token.outputs.token }}
           MAJOR_TAG: ${{ steps.meta.outputs.major_tag }}
           TAG_NAME: ${{ steps.meta.outputs.tag_name }}
         run: |
