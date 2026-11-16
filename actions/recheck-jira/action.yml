@@ -1,0 +1,43 @@
+name: Recheck Jira command
+description: Run /recheck-jira to re-validate Jira tickets in the PR title
+inputs:
+  pr-number:
+    description: Pull request number
+    required: true
+  comment-id:
+    description: Issue comment ID that triggered the command
+    required: true
+  comment-body:
+    description: Full comment body (must contain /recheck-jira)
+    required: true
+  comment-author:
+    description: GitHub login of the comment author
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      run: npm ci
+
+    - name: Run /recheck-jira
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      env:
+        BOT_TOKEN: ${{ env.BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        JIRA_TOKEN: ${{ env.JIRA_TOKEN }}
+        STATUS_GITHUB_TOKEN: ${{ env.STATUS_GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        COMMENT_ID: ${{ inputs.comment-id }}
+        COMMENT_BODY: ${{ inputs.comment-body }}
+        COMMENT_AUTHOR: ${{ inputs.comment-author }}
+      run: npx tsx src/commands/dispatcher.ts
